@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:weatherapplication/animted_clouds/animted_clouds.dart';
 import 'package:weatherapplication/screens/main_dashboard.dart';
+import 'package:weatherapplication/testing.dart';
 import 'api_model/api_auth.dart';
 
 void main(){
@@ -12,7 +14,7 @@ class _home extends StatelessWidget{
     return MaterialApp(
       title: "Real time weather ",
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: Weather_dashboard(),
+      home: Weather_dashboard()
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:weatherapplication/Input_fields/InputFields.dart';
 import 'package:weatherapplication/api_model/api_auth.dart';
+import 'package:weatherapplication/animted_clouds/animted_clouds.dart';
 
 class Weather_dashboard extends StatefulWidget {
   const Weather_dashboard({super.key});
@@ -12,7 +13,30 @@ class Weather_dashboard extends StatefulWidget {
 class _Weather_dashboardState extends State<Weather_dashboard> {
   final Api _service = Api();
   final TextEditingController _searchController = TextEditingController() ;
-  String _currentCity = "100.0.0.2";
+  String _currentCity = "London";
+
+  Widget getweather(int conditionCode , String iconsURL , int day__) {
+    final List<int> lottiecode = [
+      1000, 1003, 1006, 1009, 1030, 1135, 1147,
+      1063, 1150, 1153, 1180, 1183, 1240,
+      1186, 1189, 1192, 1195, 1243, 1246,
+      1087, 1273, 1276, 1279, 1282,
+      1066, 1069, 1114, 1117, 1213, 1216, 1225
+    ];
+    if (lottiecode.contains(conditionCode)){
+      return AnimtedClouds(code_: conditionCode , isday_: day__,) ;
+    }
+    else{
+      return Image.network(
+        "https:$iconsURL",
+        width: 120,
+        height: 120,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.cloud_off),
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,24 +73,38 @@ class _Weather_dashboardState extends State<Weather_dashboard> {
                     const SizedBox(height: 30),
 
                     Expanded(
-                      child: Column(
-                        children: [
-                          Image.network(
-                            "https:${data['current']['condition']['icon']}",
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
-                          ),
-                          Text(
-                            data['location']['name'],
-                            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            "${data['current']['temp_c']}°C",
-                            style: const TextStyle(fontSize: 30),
-                          ),
-                        ],
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data['location']['name'],
+                              style: const TextStyle(fontSize: 45, fontWeight: FontWeight.bold),
+                            ),
+                            Center(
+                              child: Expanded(
+
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 400 ,
+                                      width: 400,
+                                      child: getweather(data['current']['condition']['code'] , data['current']['condition']['icon'] , data['current']['is_day'] ) ,
+                                    ),
+                                    Column(
+                                      children: [
+                                        Text("${data['current']['temp_c']} °C"  , style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),),
+                                        Text("${data['current']['temp_f']} °F" , style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),)
+                                      ],
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ) ,
+
+                          ],
+                        ),
                       ),
                     )
                   ],
