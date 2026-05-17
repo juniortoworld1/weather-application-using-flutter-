@@ -90505,7 +90505,7 @@ zf(a){return this.amo(a)},
 amo(a){var s=0,r=A.N(t.a),q,p
 var $async$zf=A.O(function(b,c){if(b===1)return A.K(c,r)
 for(;;)switch(s){case 0:s=3
-return A.Q(A.aSI(A.hx("http://api.weatherapi.com/v1/forecast.json?key=a6aa2392e0774d9489151147261405&q="+a+"&days=7")),$async$zf)
+return A.Q(A.aSI(A.hx("https://api.weatherapi.com/v1/forecast.json?key=a6aa2392e0774d9489151147261405&q="+a+"&days=7")),$async$zf)
 case 3:p=c
 if(p.b===200){q=B.d7.UQ(A.aSq(A.aQ9(p.e)).fX(p.w),null)
 s=1
