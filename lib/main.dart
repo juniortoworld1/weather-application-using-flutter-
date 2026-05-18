@@ -14,7 +14,7 @@ class _home extends StatelessWidget{
     return MaterialApp(
       title: "Real time weather ",
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: Weather_dashboard()
+      home: const WeatherDashboard()
     );
   }
 

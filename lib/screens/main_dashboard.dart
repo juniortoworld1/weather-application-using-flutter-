@@ -1,41 +1,67 @@
+import 'dart:ui'; // CRITICAL: Required for ImageFilter backdrop blurs
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:weatherapplication/Input_fields/InputFields.dart';
+import 'package:weatherapplication/Input_fields/InputFields.dart';
 import 'package:weatherapplication/api_model/api_auth.dart';
 import 'package:weatherapplication/animted_clouds/animted_clouds.dart';
-import 'package:lottie/lottie.dart';
 import 'package:weatherapplication/lottie_custom/custom_lottie.dart';
 
-class Weather_dashboard extends StatefulWidget {
-  const Weather_dashboard({super.key});
+class WeatherDashboard extends StatefulWidget {
+  const WeatherDashboard({super.key});
 
   @override
-  State<Weather_dashboard> createState() => _Weather_dashboardState();
+  State<WeatherDashboard> createState() => _WeatherDashboardState();
 }
 
-class _Weather_dashboardState extends State<Weather_dashboard> {
+class _WeatherDashboardState extends State<WeatherDashboard> {
+  static const List<int> _lottieCodes = [
+    1000, 1003, 1006, 1009, 1030, 1135, 1147,
+    1063, 1150, 1153, 1180, 1183, 1240,
+    1186, 1189, 1192, 1195, 1243, 1246,
+    1087, 1273, 1276, 1279, 1282,
+    1066, 1069, 1114, 1117, 1213, 1216, 1225
+  ];
+
   final Api _service = Api();
   final TextEditingController _searchController = TextEditingController();
-  String _currentCity = "London";
 
-  Widget getweather(int conditionCode, String iconsURL, int day__) {
-    final List<int> lottiecode = [
-      1000, 1003, 1006, 1009, 1030, 1135, 1147,
-      1063, 1150, 1153, 1180, 1183, 1240,
-      1186, 1189, 1192, 1195, 1243, 1246,
-      1087, 1273, 1276, 1279, 1282,
-      1066, 1069, 1114, 1117, 1213, 1216, 1225
-    ];
-    if (lottiecode.contains(conditionCode)) {
-      return AnimtedClouds(code_: conditionCode, isday_: day__);
+  String _currentCity = "London";
+  late Future<dynamic> _weatherFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _weatherFuture = _service.fetchdata(_currentCity);
+  }
+
+  void _searchWeather(String city) {
+    if (city.isNotEmpty) {
+      setState(() {
+        _currentCity = city;
+        _weatherFuture = _service.fetchdata(_currentCity);
+      });
+    }
+  }
+
+  Widget _getWeatherWidget(int conditionCode, String iconsURL, int isDay) {
+    if (_lottieCodes.contains(conditionCode)) {
+      return AnimtedClouds(code_: conditionCode, isday_: isDay);
     } else {
       return Image.network(
         "https:$iconsURL",
-        width: 120,
-        height: 120,
-        errorBuilder: (context, error, stackTrace) => const Icon(Icons.cloud_off, color: Colors.white70),
+        width: 100,
+        height: 100,
+        errorBuilder: (context, error, stackTrace) =>
+        const Icon(Icons.cloud_off, color: Colors.white70, size: 40),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -44,196 +70,248 @@ class _Weather_dashboardState extends State<Weather_dashboard> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-
-      backgroundColor: const Color(0xFF1A1C2E),
+      backgroundColor: const Color(0xFF0F101D), // Darker midnight tone for rich contrast
       body: SafeArea(
-        child: FutureBuilder(
-          future: _service.fetchdata(_currentCity),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Colors.white));
-            } else if (snapshot.hasError) {
-              return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.white)));
-            } else if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(child: Text("No data found", style: const TextStyle(color: Colors.white)));
-            } else {
-              final data = snapshot.data as Map<String, dynamic>;
-              final List forecastList = data['forecast']['forecastday'];
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Inputfields(
+                onSubmitted: (value) => _searchWeather(value.trim()),
+                label: "Location",
+                controller: _searchController,
+                hint: "Search city...",
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: FutureBuilder(
+                  future: _weatherFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Colors.white38));
+                    }
+                    if (snapshot.hasError) {
+                      return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.white70)));
+                    }
+                    if (!snapshot.hasData || snapshot.data == null) {
+                      return const Center(child: Text("No data found", style: const TextStyle(color: Colors.white60)));
+                    }
 
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Inputfields(
-                      onSubmitted: (value) {
-                        if (value.isNotEmpty) {
-                          setState(() {
-                            _currentCity = value;
-                          });
-                        }
-                      },
-                      label: "City",
-                      controller: _searchController,
-                      hint: "Search your location",
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              data['location']['name'],
-                              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  height: kIsWeb?400:screenHeight * 0.30,
-                                  width: kIsWeb?400:screenWidth*0.6,
-                                  child: getweather(
-                                    data['current']['condition']['code'],
-                                    data['current']['condition']['icon'],
-                                    data['current']['is_day'],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "${data['current']['temp_c']} °C",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 30, color: Colors.white),
-                                    ),
-                                    Text(
-                                      "${data['current']['temp_f']} °F",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white60),
-                                    ),],
-                                ),
+                    final data = snapshot.data as Map<String, dynamic>;
+                    final List forecastList = data['forecast']['forecastday'];
 
-                              ],
-                            ),
-                            const SizedBox(height: kIsWeb?30:0),
-
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white60.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(color: Colors.white70, width: 1.5),
+                    return CustomScrollView(
+                      physics: const BouncingScrollPhysics(), // Premium iOS/Android elastic scroll feel
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // City Label & Clean Subtitle Date
+                              Text(
+                                data['location']['name'],
+                                style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: -1.0),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              Text(
+                                "Today, ${data['location']['localtime'].toString().split(' ')[0]}",
+                                style: const TextStyle(fontSize: 14, color: Colors.white38, fontWeight: FontWeight.w500, letterSpacing: 0.5),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Typography Contrast Section: Massive Light Numbers + Bold Condition Text
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  
-                                  Container(
+                                  Expanded(
                                     child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        SizedBox(  width: kIsWeb?100:70, height: kIsWeb?100:70, child: CustomLottie(assetPath: 'assets/images/humidity.json' , fit: BoxFit.contain,)) ,
-                                        Text("${data['current']['humidity']}%" , style: TextStyle(fontSize: 25 , fontWeight: FontWeight.bold, color: Colors.white70),) ,
-                                        Text("Humidity" , style: TextStyle(fontSize: 23 , fontWeight: FontWeight.w500 , color: Colors.white60),)
+                                        Text(
+                                          "${data['current']['temp_c']}°",
+                                          style: const TextStyle(fontWeight: FontWeight.w100, fontSize: 86, color: Colors.white, height: 1.0),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          data['current']['condition']['text'].toString().toUpperCase(),
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70, letterSpacing: 2.0),
+                                        ),
                                       ],
                                     ),
-                                  ) ,
-
-                                  Container(
-                                    child: Column(
-                                      children: [
-                                        SizedBox(  width: kIsWeb?100:70, height: kIsWeb?100:70, child: CustomLottie(assetPath: 'assets/images/spedometer.json' , fit: BoxFit.contain,)) ,
-                                        Text("${data['current']['wind_kph']} Km/h" , style: TextStyle(fontSize: 25 , fontWeight: FontWeight.bold, color: Colors.white70),) ,
-                                        Text("Wind" , style: TextStyle(fontSize: 23 , fontWeight: FontWeight.w500 , color: Colors.white60),)
-                                      ],
+                                  ),
+                                  SizedBox(
+                                    height: screenHeight * 0.20,
+                                    width: screenWidth * 0.42,
+                                    child: _getWeatherWidget(
+                                      data['current']['condition']['code'],
+                                      data['current']['condition']['icon'],
+                                      data['current']['is_day'],
                                     ),
-                                  ) ,
-
-                                  Container(
-                                    child: Column(
-                                      children: [
-                                        SizedBox(  width: kIsWeb?100:70, height: kIsWeb?100:70, child: CustomLottie(assetPath: 'assets/images/UV_aniamted.json' , fit: BoxFit.contain,)) ,
-                                        Text("${data['current']['uv']}" , style: TextStyle(fontSize: 25 , fontWeight: FontWeight.bold, color: Colors.white70),) ,
-                                        Text("UV index" , style: TextStyle(fontSize: 23 , fontWeight: FontWeight.w500 , color: Colors.white60),)
-                                      ],
-                                    ),
-                                  )
-
+                                  ),
                                 ],
                               ),
-                            ) ,
+                              const SizedBox(height: 28),
 
-                            SizedBox(height: 30,) ,
-                            const Text(
-                              "7-Day Forecast",
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            const SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: forecastList.length,
-                              itemBuilder: (context, index) {
-                                final dayData = forecastList[index];
-                                final String date = dayData['date'];
-                                final Map dayDetails = dayData['day'];
-                                final double avgTempC = dayDetails['avgtemp_c'];
-                                final int conditionCode = dayDetails['condition']['code'];
-                                final String iconUrl = dayDetails['condition']['icon'];
+                              // MODERN ENGINE: Horizontal Hourly Forecast Reel
+                              const Text("HOURLY FORECAST", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.5)),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 135,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  itemCount: (data['forecast']['forecastday'][0]['hour'] as List).length,
+                                  itemBuilder: (context, hourIndex) {
+                                    final hourData = data['forecast']['forecastday'][0]['hour'][hourIndex];
+                                    // Displays hourly updates at 3-hour intervals to keep the layout concise
+                                    if (hourIndex % 3 != 0) return const SizedBox.shrink();
 
-                                return Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white60.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(30),
-                                      border: Border.all(color: Colors.white70, width: 1.5),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 80,
-                                          height: 80,
-                                          child: getweather(conditionCode, iconUrl, 1),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          mainAxisAlignment: MainAxisAlignment.start,
+                                    return _buildGlassCard(
+                                      margin: const EdgeInsets.only(right: 12, bottom: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(hourData['time'].toString().split(' ')[1], style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.w600)),
+                                          const SizedBox(height: 6),
+                                          Image.network("https:${hourData['condition']['icon']}", width: 36, height: 36),
+                                          const SizedBox(height: 6),
+                                          Text("${hourData['temp_c']}°", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+
+                              // Weather Metrics Bento Row
+                              const Text("CURRENT METRICS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.5)),
+                              const SizedBox(height: 12),
+                              _buildGlassCard(
+                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildMetricColumn('assets/images/humidity.json', "${data['current']['humidity']}%", "Humidity"),
+                                    _buildMetricColumn('assets/images/spedometer.json', "${data['current']['wind_kph']} km/h", "Wind"),
+                                    _buildMetricColumn('assets/images/UV_aniamted.json', "${data['current']['uv']}", "UV Index"),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+
+                              const Text(
+                                "7-DAY FORECAST",
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.5),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
+                        ),
+
+                        // Refactored 7-Day Forecast SliverList
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                              final dayData = forecastList[index];
+                              final Map dayDetails = dayData['day'];
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10.0),
+                                child: _buildGlassCard(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 55,
+                                        height: 55,
+                                        child: _getWeatherWidget(dayDetails['condition']['code'], dayDetails['condition']['icon'], 1),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(date, style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white)),
-                                            const SizedBox(height: 5),
-                                            Text(dayDetails['condition']['text'], style: const TextStyle(color: Colors.white70)),
+                                            Text(dayData['date'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
+                                            const SizedBox(height: 3),
+                                            Text(dayDetails['condition']['text'], style: const TextStyle(color: Colors.white38, fontSize: 13, fontWeight: FontWeight.w500)),
                                           ],
                                         ),
-                                        Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
-                                              children: [
-                                                Text("${avgTempC.toStringAsFixed(1)} °C", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      Text(
+                                        "${dayDetails['avgtemp_c'].toStringAsFixed(1)}°",
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white, letterSpacing: -0.5),
+                                      ),
+                                    ],
                                   ),
-                                );
-                              },
-                            ),
-                          ],
+                                ),
+                              );
+                            },
+                            childCount: forecastList.length,
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
-              );
-            }
-          },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricColumn(String assetPath, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: kIsWeb ? 85 : 60,
+          height: kIsWeb ? 85 : 60,
+          child: CustomLottie(assetPath: assetPath, fit: BoxFit.contain),
+        ),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white38))
+      ],
+    );
+  }
+
+  // 💎 PREMIUM ELEMENT: Isolated, Reusable Glassmorphism Wrapper
+  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding, EdgeInsetsGeometry? margin}) {
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            )
+          ]
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16), // Frosting factor
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05), // Translucent backdrop
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.12), // Subtle translucent boundary highlight
+                width: 1.0,
+              ),
+            ),
+            child: child,
+          ),
         ),
       ),
     );
   }
 }
+
